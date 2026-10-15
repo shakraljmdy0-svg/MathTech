@@ -13,6 +13,7 @@ icon.filename = %(source.dir)s/assets/icon.png
 presplash.filename = %(source.dir)s/assets/splash.png
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
+android.build_tools_version = 35.0.0
 android.minapi = 24
 android.ndk = 25b
 android.archs = arm64-v8a, armeabi-v7a
