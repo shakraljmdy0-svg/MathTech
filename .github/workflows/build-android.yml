@@ -43,30 +43,26 @@ jobs:
             cmake libffi-dev libssl-dev build-essential ccache libltdl-dev
 
       # ============================================================
-      # تثبيت SDK في المسار الذي يتوقعه Buildozer بالضبط
+      # تثبيت SDK + كل build-tools الحديثة
       # ============================================================
       - name: Setup Android SDK (Buildozer compatible layout)
         run: |
-          # المجلد الذي يتوقعه Buildozer
           SDK=/home/runner/android-sdk
           mkdir -p $SDK/cmdline-tools
           mkdir -p $SDK/tools/bin
           mkdir -p $SDK/licenses
-          mkdir -p $SDK/build-tools
-          mkdir -p $SDK/platforms
 
-          # تحميل commandlinetools
           cd $SDK/cmdline-tools
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
           rm commandlinetools-linux-9477386_latest.zip
 
-          # ===== الروابط الرمزية (الحل الأساسي) =====
+          # روابط رمزية
           ln -sf $SDK/cmdline-tools/latest/bin/sdkmanager $SDK/tools/bin/sdkmanager
           ln -sf $SDK/cmdline-tools/latest/bin/avdmanager $SDK/tools/bin/avdmanager
 
-          # ===== قبول التراخيص =====
+          # قبول التراخيص
           for f in android-sdk-license android-sdk-preview-license android-googletv-license android-sdk-arm-dbt-license google-gdk-license mips-android-sysimage-license; do
             echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $SDK/licenses/$f
             echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $SDK/licenses/$f
@@ -74,16 +70,24 @@ jobs:
             echo "84831b9409646a918e30573bab4c9c91346d8abd" >> $SDK/licenses/$f
           done
 
-          # ===== تثبيت الحزم =====
           export PATH=$SDK/cmdline-tools/latest/bin:$PATH
           yes | sdkmanager --licenses || true
-          sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
+          # تثبيت كل build-tools الحديثة المهمة
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "build-tools;34.0.0" \
+            "build-tools;35.0.0" \
+            "ndk;25.2.9519653"
+
           sdkmanager --list_installed
 
-          echo "=== التحقق من aidl ==="
+          echo "=== التحقق من aidl في build-tools;33.0.2 ==="
           ls -la $SDK/build-tools/33.0.2/aidl
-          echo "=== التحقق من sdkmanager في tools/bin ==="
-          ls -la $SDK/tools/bin/
+          echo "=== محتوى build-tools ==="
+          ls -la $SDK/build-tools/
 
       - name: Install Buildozer
         run: |
