@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Install system dependencies
         run: |
@@ -43,29 +43,45 @@ jobs:
         with:
           packages: |
             platform-tools
-            platforms;android-31
-            build-tools;35.0.0
+            platforms;android-33
+            build-tools;33.0.2
             ndk;25.2.9519653
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
       - name: Verify Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           sdkmanager --list_installed
-          test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          test -f "$ANDROID_HOME/build-tools/33.0.2/aidl"
           echo "Android SDK verification passed."
 
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install buildozer
+          python -m pip install buildozer cython==0.29.36 virtualenv
+
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            .buildozer
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-
 
       - name: Build APK
         run: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: MathTech-debug-APK
           path: bin/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
