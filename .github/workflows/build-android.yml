@@ -38,41 +38,47 @@ jobs:
             libtinfo5 cmake libffi-dev libssl-dev \
             build-essential ccache libltdl-dev
 
-      # ===== الحل: قبول التراخيص أولاً =====
-      - name: Accept all Android SDK licenses
+      # ===== الحل: تثبيت Android SDK يدوياً =====
+      - name: Download and setup Android command line tools
         run: |
-          mkdir -p $ANDROID_HOME/licenses
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $ANDROID_HOME/licenses/android-sdk-license
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >> $ANDROID_HOME/licenses/android-sdk-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
-          echo "504667f4c0de7af1a06de9f4b1727b84351f2910" > $ANDROID_HOME/licenses/android-sdk-arm-dbt-license
-          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > $ANDROID_HOME/licenses/google-gdk-license
-          echo "859f317696f67ef3d7f30a50a5560e7834b43903" > $ANDROID_HOME/licenses/mips-android-sysimage-license
-          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > $ANDROID_HOME/licenses/android-googletv-license
-          echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d" > $ANDROID_HOME/licenses/android-sdk-preview-license
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools latest
+          rm commandlinetools-linux-9477386_latest.zip
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-      # ===== تثبيت حزم SDK بعد قبول التراخيص =====
+      # ===== قبول التراخيص =====
+      - name: Accept Android SDK licenses
+        run: |
+          mkdir -p $HOME/android-sdk/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $HOME/android-sdk/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/android-sdk/licenses/android-sdk-license
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >> $HOME/android-sdk/licenses/android-sdk-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/android-sdk/licenses/android-sdk-preview-license
+          echo "504667f4c0de7af1a06de9f4b1727b84351f2910" > $HOME/android-sdk/licenses/android-sdk-arm-dbt-license
+          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > $HOME/android-sdk/licenses/google-gdk-license
+          echo "859f317696f67ef3d7f30a50a5560e7834b43903" > $HOME/android-sdk/licenses/mips-android-sysimage-license
+          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > $HOME/android-sdk/licenses/android-googletv-license
+
+      # ===== تثبيت الحزم =====
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" \
-                     "platforms;android-33" \
-                     "build-tools;33.0.2" \
-                     "ndk;25.2.9519653"
-
-      - name: Set environment variables
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          sdkmanager --install "platform-tools" \
+                               "platforms;android-33" \
+                               "build-tools;33.0.2" \
+                               "ndk;25.2.9519653"
 
       - name: Verify Android SDK
         run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
           sdkmanager --list_installed
           test -f "$ANDROID_HOME/build-tools/33.0.2/aidl"
-          echo "✓ Android SDK verification passed."
+          echo "Android SDK verification passed."
 
       - name: Install Buildozer
         run: |
