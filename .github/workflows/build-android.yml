@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     env:
-      # هذا أهم سطر: نمنع Buildozer من البحث في مكانه الافتراضي
       ANDROID_HOME: /home/runner/android-sdk
       ANDROID_SDK_ROOT: /home/runner/android-sdk
       ANDROIDSDK: /home/runner/android-sdk
@@ -68,19 +67,13 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
           sdkmanager --list_installed
+          echo "=== التحقق من aidl ==="
+          ls -la $HOME/android-sdk/build-tools/33.0.2/aidl
 
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.36
-
-      - name: Fix buildozer.spec sdk_path
-        run: |
-          # نحذف أي سطر قديم ونضيف المسار الصحيح
-          sed -i '/android.sdk_path/d' buildozer.spec
-          echo "android.sdk_path = /home/runner/android-sdk" >> buildozer.spec
-          sed -i '/android.ndk_path/d' buildozer.spec
-          echo "android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653" >> buildozer.spec
 
       - name: Build APK
         run: buildozer -v android debug
