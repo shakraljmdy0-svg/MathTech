@@ -6,9 +6,6 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -32,14 +29,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip \
-            autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev \
-            build-essential ccache libltdl-dev
+            git zip unzip autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake libffi-dev libssl-dev build-essential ccache libltdl-dev
 
-      # ===== الحل: تثبيت Android SDK يدوياً =====
-      - name: Download and setup Android command line tools
+      # ===== تحميل SDK يدوياً =====
+      - name: Download Android SDK
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
@@ -51,50 +46,40 @@ jobs:
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-      # ===== قبول التراخيص =====
-      - name: Accept Android SDK licenses
+      # ===== قبول التراخيص يدوياً (هذا يحل مشكلة build-tools 37) =====
+      - name: Accept all licenses
         run: |
           mkdir -p $HOME/android-sdk/licenses
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $HOME/android-sdk/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/android-sdk/licenses/android-sdk-license
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >> $HOME/android-sdk/licenses/android-sdk-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/android-sdk/licenses/android-sdk-preview-license
-          echo "504667f4c0de7af1a06de9f4b1727b84351f2910" > $HOME/android-sdk/licenses/android-sdk-arm-dbt-license
-          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > $HOME/android-sdk/licenses/google-gdk-license
-          echo "859f317696f67ef3d7f30a50a5560e7834b43903" > $HOME/android-sdk/licenses/mips-android-sysimage-license
-          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > $HOME/android-sdk/licenses/android-googletv-license
+          for f in android-sdk-license android-sdk-preview-license android-googletv-license android-sdk-arm-dbt-license google-gdk-license mips-android-sysimage-license; do
+            echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $HOME/android-sdk/licenses/$f
+            echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/android-sdk/licenses/$f
+            echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >> $HOME/android-sdk/licenses/$f
+            echo "84831b9409646a918e30573bab4c9c91346d8abd" >> $HOME/android-sdk/licenses/$f
+          done
 
-      # ===== تثبيت الحزم =====
+      # ===== تثبيت كل حزم SDK =====
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager --install "platform-tools" \
-                               "platforms;android-33" \
-                               "build-tools;33.0.2" \
-                               "ndk;25.2.9519653"
-
-      - name: Verify Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
           sdkmanager --list_installed
-          test -f "$ANDROID_HOME/build-tools/33.0.2/aidl"
-          echo "Android SDK verification passed."
 
+      # ===== تثبيت Buildozer =====
       - name: Install Buildozer
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install buildozer cython==0.29.36 virtualenv
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36
 
-      - name: Cache Buildozer
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-            .buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-
+      # ===== إعداد buildozer.spec =====
+      - name: Configure buildozer.spec
+        run: |
+          sed -i 's|^# android.sdk_path =.*|android.sdk_path = /home/runner/android-sdk|' buildozer.spec || true
+          sed -i 's|^android.sdk_path =.*|android.sdk_path = /home/runner/android-sdk|' buildozer.spec || true
+          grep -q "android.sdk_path" buildozer.spec || echo "android.sdk_path = /home/runner/android-sdk" >> buildozer.spec
+          echo "ANDROIDSDK=/home/runner/android-sdk" >> $GITHUB_ENV
+          echo "ANDROIDNDK=/home/runner/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
 
+      # ===== البناء =====
       - name: Build APK
         run: buildozer -v android debug
 
@@ -102,6 +87,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: MathTech-debug-APK
+          name: MathTech-APK
           path: bin/*.apk
-          if-no-files-found: warn
