@@ -10,6 +10,16 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      # هذا أهم سطر: نمنع Buildozer من البحث في مكانه الافتراضي
+      ANDROID_HOME: /home/runner/android-sdk
+      ANDROID_SDK_ROOT: /home/runner/android-sdk
+      ANDROIDSDK: /home/runner/android-sdk
+      ANDROID_NDK_HOME: /home/runner/android-sdk/ndk/25.2.9519653
+      ANDROIDNDK: /home/runner/android-sdk/ndk/25.2.9519653
+      ANDROIDAPI: "33"
+      ANDROIDMINAPI: "24"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,8 +43,7 @@ jobs:
             zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
             cmake libffi-dev libssl-dev build-essential ccache libltdl-dev
 
-      # ===== تحميل SDK يدوياً =====
-      - name: Download Android SDK
+      - name: Download Android SDK command line tools
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
@@ -42,12 +51,9 @@ jobs:
           unzip -q commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
           rm commandlinetools-linux-9477386_latest.zip
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-      # ===== قبول التراخيص يدوياً (هذا يحل مشكلة build-tools 37) =====
-      - name: Accept all licenses
+      - name: Accept all Android SDK licenses
         run: |
           mkdir -p $HOME/android-sdk/licenses
           for f in android-sdk-license android-sdk-preview-license android-googletv-license android-sdk-arm-dbt-license google-gdk-license mips-android-sysimage-license; do
@@ -57,29 +63,25 @@ jobs:
             echo "84831b9409646a918e30573bab4c9c91346d8abd" >> $HOME/android-sdk/licenses/$f
           done
 
-      # ===== تثبيت كل حزم SDK =====
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
           sdkmanager --list_installed
 
-      # ===== تثبيت Buildozer =====
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.36
 
-      # ===== إعداد buildozer.spec =====
-      - name: Configure buildozer.spec
+      - name: Fix buildozer.spec sdk_path
         run: |
-          sed -i 's|^# android.sdk_path =.*|android.sdk_path = /home/runner/android-sdk|' buildozer.spec || true
-          sed -i 's|^android.sdk_path =.*|android.sdk_path = /home/runner/android-sdk|' buildozer.spec || true
-          grep -q "android.sdk_path" buildozer.spec || echo "android.sdk_path = /home/runner/android-sdk" >> buildozer.spec
-          echo "ANDROIDSDK=/home/runner/android-sdk" >> $GITHUB_ENV
-          echo "ANDROIDNDK=/home/runner/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          # نحذف أي سطر قديم ونضيف المسار الصحيح
+          sed -i '/android.sdk_path/d' buildozer.spec
+          echo "android.sdk_path = /home/runner/android-sdk" >> buildozer.spec
+          sed -i '/android.ndk_path/d' buildozer.spec
+          echo "android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653" >> buildozer.spec
 
-      # ===== البناء =====
       - name: Build APK
         run: buildozer -v android debug
 
