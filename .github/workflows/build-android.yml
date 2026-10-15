@@ -13,10 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,8 +36,7 @@ jobs:
             autoconf automake libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
             libtinfo5 cmake libffi-dev libssl-dev \
-            build-essential ccache \
-            libltdl-dev
+            build-essential ccache libltdl-dev
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -59,10 +54,8 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la "$ANDROID_HOME/build-tools/35.0.0"
-          test -x "$ANDROID_HOME/build-tools/35.0.0/aidl" \
-            || test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
-          echo "Android SDK tools verified."
+          test -f "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          ls -l "$ANDROID_HOME/build-tools/35.0.0/aidl"
 
       - name: Install Buildozer
         run: |
@@ -70,7 +63,11 @@ jobs:
           python -m pip install buildozer
 
       - name: Build APK
-        run: buildozer -v android debug
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+        run: |
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
